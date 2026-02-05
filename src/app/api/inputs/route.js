@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getStudentByEmail, getStudentInputs, saveStudentInput } from '@/lib/airtable';
+import { getStudentByEmail, getStudentInputs, saveStudentInput } from '@/lib/db';
 import { checkSubscriptionStatus } from '@/lib/stripe';
 
 // GET: Retrieve saved inputs (optionally filtered by moduleId)

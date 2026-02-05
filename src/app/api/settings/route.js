@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getStudentByEmail, updateStudent } from '@/lib/airtable';
+import { getStudentByEmail, updateStudent } from '@/lib/db';
 import { checkSubscriptionStatus } from '@/lib/stripe';
 
 // GET: Get current settings
@@ -54,9 +54,9 @@ export async function POST(request) {
     const { emailTool, apiKey, company } = await request.json();
 
     const updateFields = {};
-    if (emailTool !== undefined) updateFields['Email Tool'] = emailTool;
-    if (apiKey !== undefined) updateFields['API Key'] = apiKey;
-    if (company !== undefined) updateFields['Company'] = company;
+    if (emailTool !== undefined) updateFields.emailTool = emailTool;
+    if (apiKey !== undefined) updateFields.apiKey = apiKey;
+    if (company !== undefined) updateFields.company = company;
 
     if (Object.keys(updateFields).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });

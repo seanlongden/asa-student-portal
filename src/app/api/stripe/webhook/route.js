@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { stripe as getStripe } from '@/lib/stripe';
-import { getStudentByEmail, createStudent, updateStudent } from '@/lib/airtable';
+import { getStudentByEmail, createStudent, updateStudent } from '@/lib/db';
 import { Resend } from 'resend';
 import { generateMagicToken } from '@/lib/auth';
 
@@ -38,7 +38,6 @@ export async function POST(request) {
           let student = await getStudentByEmail(email);
 
           if (!student) {
-            // Create new student in Airtable
             student = await createStudent({
               name,
               email,
@@ -47,8 +46,8 @@ export async function POST(request) {
           } else {
             // Update existing student
             await updateStudent(student.id, {
-              'Stripe Customer ID': session.customer,
-              Status: 'Active',
+              stripeCustomerId: session.customer,
+              status: 'Active',
             });
           }
 
@@ -79,7 +78,7 @@ export async function POST(request) {
         if (customer.email) {
           const student = await getStudentByEmail(customer.email);
           if (student) {
-            await updateStudent(student.id, { Status: 'Churned' });
+            await updateStudent(student.id, { status: 'Churned' });
           }
         }
         break;
@@ -91,7 +90,7 @@ export async function POST(request) {
         if (customer.email) {
           const student = await getStudentByEmail(customer.email);
           if (student) {
-            await updateStudent(student.id, { Status: 'Payment Failed' });
+            await updateStudent(student.id, { status: 'Payment Failed' });
           }
         }
         break;

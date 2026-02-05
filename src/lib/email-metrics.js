@@ -7,16 +7,17 @@ export async function fetchMetrics(tool, apiKey) {
       return fetchInstantlyMetrics(apiKey);
     case 'smartlead':
       return fetchSmartleadMetrics(apiKey);
-    case 'mailshake':
-      return fetchMailshakeMetrics(apiKey);
-    case 'woodpecker':
-      return fetchWoodpeckerMetrics(apiKey);
+    case 'plusvibe':
+      return fetchPlusvibeMetrics(apiKey);
+    case 'emailbison':
+      return fetchEmailbisonMetrics(apiKey);
     default:
       throw new Error(`Unsupported email tool: ${tool}`);
   }
 }
 
 // ---- Instantly ----
+// Docs: https://developer.instantly.ai
 async function fetchInstantlyMetrics(apiKey) {
   const res = await fetch(
     `https://api.instantly.ai/api/v1/analytics/campaign/summary?api_key=${encodeURIComponent(apiKey)}`,
@@ -35,6 +36,7 @@ async function fetchInstantlyMetrics(apiKey) {
 }
 
 // ---- Smartlead ----
+// Docs: https://api.smartlead.ai/reference
 async function fetchSmartleadMetrics(apiKey) {
   const res = await fetch(
     `https://server.smartlead.ai/api/v1/campaigns?api_key=${encodeURIComponent(apiKey)}`,
@@ -61,62 +63,89 @@ async function fetchSmartleadMetrics(apiKey) {
   return normalizeMetrics(totals);
 }
 
-// ---- Mailshake ----
-async function fetchMailshakeMetrics(apiKey) {
-  const res = await fetch('https://api.mailshake.com/2017-04-01/campaigns/list', {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({}),
-  });
-  if (!res.ok) throw new Error(`Mailshake API error: ${res.status}`);
+// ---- PlusVibe (formerly pipl.ai) ----
+// Docs: https://developer.plusvibe.ai
+// Auth: API key passed as query param, workspace_id required
+// Rate limit: 5 req/sec
+async function fetchPlusvibeMetrics(apiKey) {
+  // PlusVibe API key format may include workspace: "key:workspace_id"
+  let key = apiKey;
+  let workspaceId = '';
+  if (apiKey.includes(':')) {
+    [key, workspaceId] = apiKey.split(':');
+  }
+
+  const params = new URLSearchParams({ api_key: key });
+  if (workspaceId) params.set('workspace_id', workspaceId);
+
+  const res = await fetch(
+    `https://api.plusvibe.ai/api/v1/campaigns?${params}`,
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+  if (!res.ok) throw new Error(`PlusVibe API error: ${res.status}`);
   const data = await res.json();
+  const campaigns = data.campaigns || data || [];
 
   let totals = { emailsSent: 0, opens: 0, replies: 0, positiveReplies: 0, bounces: 0 };
 
-  if (data.results) {
-    for (const campaign of data.results) {
-      totals.emailsSent += campaign.sent || 0;
-      totals.opens += campaign.opened || 0;
-      totals.replies += campaign.replied || 0;
-      totals.bounces += campaign.bounced || 0;
+  for (const campaign of campaigns) {
+    const statsRes = await fetch(
+      `https://api.plusvibe.ai/api/v1/campaigns/${campaign.id}/analytics?${params}`
+    );
+    if (statsRes.ok) {
+      const stats = await statsRes.json();
+      totals.emailsSent += stats.emails_sent || stats.sent || 0;
+      totals.opens += stats.emails_opened || stats.opened || 0;
+      totals.replies += stats.emails_replied || stats.replied || 0;
+      totals.positiveReplies += stats.positive_replies || 0;
+      totals.bounces += stats.emails_bounced || stats.bounced || 0;
     }
   }
 
   return normalizeMetrics(totals);
 }
 
-// ---- Woodpecker ----
-async function fetchWoodpeckerMetrics(apiKey) {
-  const res = await fetch('https://api.woodpecker.co/rest/v1/campaign_list', {
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${apiKey}:X`).toString('base64')}`,
-      'Content-Type': 'application/json',
-    },
-  });
-  if (!res.ok) throw new Error(`Woodpecker API error: ${res.status}`);
-  const campaigns = await res.json();
+// ---- EmailBison ----
+// Docs: https://docs.emailbison.com / https://dedi.emailbison.com/api/reference
+// Auth: Bearer token (Authorization: Bearer YOUR_API_KEY)
+// Endpoints: /api/campaigns/sequence-steps, /api/replies, etc.
+async function fetchEmailbisonMetrics(apiKey) {
+  const headers = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  // Fetch campaign sequence steps to get send stats
+  const campaignsRes = await fetch(
+    'https://dedi.emailbison.com/api/campaigns/sequence-steps',
+    { headers }
+  );
+  if (!campaignsRes.ok) throw new Error(`EmailBison API error: ${campaignsRes.status}`);
+  const campaignData = await campaignsRes.json();
+  const steps = campaignData.data || campaignData || [];
 
   let totals = { emailsSent: 0, opens: 0, replies: 0, positiveReplies: 0, bounces: 0 };
 
-  for (const campaign of campaigns) {
-    const statsRes = await fetch(
-      `https://api.woodpecker.co/rest/v1/campaigns/${campaign.id}/stats`,
-      {
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${apiKey}:X`).toString('base64')}`,
-        },
-      }
-    );
-    if (statsRes.ok) {
-      const stats = await statsRes.json();
-      totals.emailsSent += stats.delivered || 0;
-      totals.opens += stats.opened || 0;
-      totals.replies += stats.replied || 0;
-      totals.bounces += stats.bounced || 0;
-    }
+  // Aggregate stats from sequence steps
+  for (const step of steps) {
+    totals.emailsSent += step.sent_count || step.emails_sent || 0;
+    totals.opens += step.open_count || step.opens || 0;
+    totals.bounces += step.bounce_count || step.bounces || 0;
+  }
+
+  // Fetch replies separately
+  const repliesRes = await fetch(
+    'https://dedi.emailbison.com/api/replies',
+    { headers }
+  );
+  if (repliesRes.ok) {
+    const repliesData = await repliesRes.json();
+    const replies = repliesData.data || repliesData || [];
+    totals.replies = replies.length;
+    // Count "interested" replies as positive
+    totals.positiveReplies = replies.filter(
+      (r) => r.status === 'interested' || r.is_interested
+    ).length;
   }
 
   return normalizeMetrics(totals);

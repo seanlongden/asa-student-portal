@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getStudentByEmail, getStudentLeads, getStudentClients, getStudentMetrics } from '@/lib/airtable';
+import { getStudentByEmail, getStudentLeads, getStudentClients, getStudentMetrics } from '@/lib/db';
 import { checkSubscriptionStatus } from '@/lib/stripe';
 
 export async function GET() {
@@ -18,7 +18,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Subscription inactive' }, { status: 403 });
     }
 
-    // Get student data from Airtable
+    // Get student data
     const student = await getStudentByEmail(email);
     if (!student) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });

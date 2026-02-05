@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getStudentByEmail, getStudentProgress, getStudentInputs } from '@/lib/airtable';
+import { getStudentByEmail, getStudentProgress, getStudentInputs } from '@/lib/db';
 import { checkSubscriptionStatus } from '@/lib/stripe';
 import { MODULES, getModuleById } from '@/lib/modules';
 

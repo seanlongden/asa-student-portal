@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { generateMagicToken } from '@/lib/auth';
-import { getStudentByEmail } from '@/lib/airtable';
+import { getStudentByEmail } from '@/lib/db';
 
 let _resend;
 function getResend() {
@@ -17,7 +17,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    // Verify student exists in Airtable
+    // Verify student exists
     const student = await getStudentByEmail(email);
     if (!student) {
       // Return success even if student not found to prevent email enumeration

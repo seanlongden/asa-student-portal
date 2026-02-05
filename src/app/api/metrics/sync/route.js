@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getStudentByEmail, upsertWeeklyMetrics } from '@/lib/airtable';
+import { getStudentByEmail, upsertWeeklyMetrics } from '@/lib/db';
 import { checkSubscriptionStatus } from '@/lib/stripe';
 import { fetchMetrics } from '@/lib/email-metrics';
 
@@ -40,7 +40,7 @@ export async function POST() {
     monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
     const weekStarting = monday.toISOString().split('T')[0];
 
-    // Save to Airtable
+    // Save to database
     await upsertWeeklyMetrics(student.id, weekStarting, metrics);
 
     return NextResponse.json({

@@ -7,8 +7,8 @@ const EMAIL_TOOLS = [
   { value: '', label: 'Select your email tool...' },
   { value: 'Instantly', label: 'Instantly' },
   { value: 'Smartlead', label: 'Smartlead' },
-  { value: 'Mailshake', label: 'Mailshake' },
-  { value: 'Woodpecker', label: 'Woodpecker' },
+  { value: 'PlusVibe', label: 'PlusVibe' },
+  { value: 'EmailBison', label: 'EmailBison' },
 ];
 
 export default function SettingsPage() {
