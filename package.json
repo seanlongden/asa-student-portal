@@ -13,6 +13,7 @@
           "react-dom": "18.2.0",
           "airtable": "^0.12.2",
           "stripe": "^14.0.0",
-          "@stripe/stripe-js": "^2.2.0"
+          "@stripe/stripe-js": "^2.2.0",
+          "resend": "^2.0.0"
     }
 }
